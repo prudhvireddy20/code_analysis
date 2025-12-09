@@ -13,7 +13,7 @@ def generate_sbom(path):
         subprocess.run(
             ["syft", path, "-o", "cyclonedx-json", "-q"],
             stdout=open(output_file, "w"),
-            check=True
+            check=True,
         )
 
         with open(output_file) as f:

@@ -1,0 +1,3 @@
+-- database: /home/prudhvi/Documents/dbc/Code_Analysis/backend/database/scans.db
+
+SELECT * FROM findings;

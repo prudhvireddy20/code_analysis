@@ -12,7 +12,14 @@ from scanners.run_syft import generate_sbom
 from scanners.run_osv import run_osv_scan
 from scanners.run_noir import run_noir_scan
 from scanners.run_semgrep import run_semgrep_scan
-from scanners.parse_results import  parse_syft, parse_osv, parse_gitleaks, parse_noir, parse_semgrep, parse_all_codeql
+from scanners.parse_results import (
+    parse_syft,
+    parse_osv,
+    parse_gitleaks,
+    parse_noir,
+    parse_semgrep,
+    parse_all_codeql,
+)
 
 
 def scan_project(input_type, repo_url_or_path):
@@ -95,7 +102,6 @@ def scan_project(input_type, repo_url_or_path):
         semgrep_results = run_semgrep_scan(repo_dir)
         print("✅ SEMGREP finished")
 
-
         # ====================================================
         # 4️⃣ Parse and return results
         # ====================================================
@@ -103,14 +109,13 @@ def scan_project(input_type, repo_url_or_path):
         with open(sbom_file, "r") as f:
             sbom_json = json.load(f)
 
-
         final_results = {
             "codeql": parse_all_codeql(codeql_results),
             "syft": parse_syft(sbom_json),
             "osv": parse_osv(osv_results),
             "gitleaks": parse_gitleaks(gitleaks_results),
             "noir": parse_noir(noir_results),
-            "semgrep":parse_semgrep(semgrep_results)
+            "semgrep": parse_semgrep(semgrep_results),
         }
 
         print("🎉 All scans completed successfully!")

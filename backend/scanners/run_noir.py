@@ -37,6 +37,7 @@ import os
 import traceback
 import re
 
+
 def run_noir_scan(path, tech="python_fastapi"):
     """
     Fully automatic OWASP Noir scan.
@@ -44,8 +45,9 @@ def run_noir_scan(path, tech="python_fastapi"):
     Returns a list of findings.
     """
 
-    valid_techs = subprocess.run(["noir", "tech", "list"], capture_output=True, text=True).stdout.splitlines()
-    
+    valid_techs = subprocess.run(
+        ["noir", "tech", "list"], capture_output=True, text=True
+    ).stdout.splitlines()
 
     try:
         output_dir = os.path.join(path, "results")
@@ -54,7 +56,9 @@ def run_noir_scan(path, tech="python_fastapi"):
 
         # --- Detect Noir command (scan or detect) ---
         try:
-            help_output = subprocess.run(["noir", "--help"], capture_output=True, text=True).stdout
+            help_output = subprocess.run(
+                ["noir", "--help"], capture_output=True, text=True
+            ).stdout
             noir_command = "detect" if "detect" in help_output else "scan"
         except Exception:
             noir_command = "scan"
@@ -71,11 +75,16 @@ def run_noir_scan(path, tech="python_fastapi"):
 
         # --- Build Noir command ---
         cmd = [
-            "noir", noir_command,
-            "--base-path", path,
-            "-t", tech,
-            "--format", "json",
-            "-o", output_file
+            "noir",
+            noir_command,
+            "--base-path",
+            path,
+            "-t",
+            tech,
+            "--format",
+            "json",
+            "-o",
+            output_file,
         ]
 
         # --- Run Noir scan ---
@@ -101,17 +110,22 @@ def run_noir_scan(path, tech="python_fastapi"):
                 # Try to extract textual findings if JSON missing
                 findings = []
                 for line in result.stdout.splitlines():
-                    match = re.search(r"(?P<file>[\w\/\.-]+):(?P<line>\d+).*?(?P<desc>Potential|Possible|Detected).*", line)
+                    match = re.search(
+                        r"(?P<file>[\w\/\.-]+):(?P<line>\d+).*?(?P<desc>Potential|Possible|Detected).*",
+                        line,
+                    )
                     if match:
-                        findings.append({
-                            "rule": "Unknown",
-                            "file": match.group("file"),
-                            "line": int(match.group("line")),
-                            "description": match.group("desc"),
-                            "severity": "medium",
-                            "confidence": "low",
-                            "tool": "Noir"
-                        })
+                        findings.append(
+                            {
+                                "rule": "Unknown",
+                                "file": match.group("file"),
+                                "line": int(match.group("line")),
+                                "description": match.group("desc"),
+                                "severity": "medium",
+                                "confidence": "low",
+                                "tool": "Noir",
+                            }
+                        )
                 if findings:
                     print(f"✅ Parsed {len(findings)} text-based Noir findings.")
                     return findings
@@ -122,15 +136,17 @@ def run_noir_scan(path, tech="python_fastapi"):
         # --- Normalize JSON findings ---
         findings = []
         for item in data.get("findings", data.get("results", [])):
-            findings.append({
-                "rule": item.get("rule") or item.get("rule_id"),
-                "file": item.get("file"),
-                "line": item.get("line") or item.get("lineNumber"),
-                "description": item.get("description") or item.get("message"),
-                "severity": item.get("severity", "unknown"),
-                "confidence": item.get("confidence", "N/A"),
-                "tool": "Noir"
-            })
+            findings.append(
+                {
+                    "rule": item.get("rule") or item.get("rule_id"),
+                    "file": item.get("file"),
+                    "line": item.get("line") or item.get("lineNumber"),
+                    "description": item.get("description") or item.get("message"),
+                    "severity": item.get("severity", "unknown"),
+                    "confidence": item.get("confidence", "N/A"),
+                    "tool": "Noir",
+                }
+            )
 
         print(f"✅ OWASP Noir finished — {len(findings)} findings detected.")
         return findings

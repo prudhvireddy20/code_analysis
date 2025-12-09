@@ -12,19 +12,26 @@ def run_gitleaks_scan(path):
         output_file = os.path.join(output_dir, "gitleaks.json")
 
         cmd = [
-            "gitleaks", "detect",
-            "--source", path,
-            "--report-format", "json",
-            "--report-path", output_file,
-            "-c", os.path.expanduser("~/.gitleaks/gitleaks.toml")
+            "gitleaks",
+            "detect",
+            "--source",
+            path,
+            "--report-format",
+            "json",
+            "--report-path",
+            output_file,
+            "-c",
+            os.path.expanduser("~/.gitleaks/gitleaks.toml"),
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         # ✅ Exit 0 = no leaks, Exit 1 = leaks found
         if result.returncode not in (0, 1):
-            return {"error": "Gitleaks scan failed",
-                    "details": result.stderr.strip() or result.stdout.strip()}
+            return {
+                "error": "Gitleaks scan failed",
+                "details": result.stderr.strip() or result.stdout.strip(),
+            }
 
         # ✅ Always try to parse the JSON report
         if os.path.exists(output_file) and os.path.getsize(output_file) > 0:

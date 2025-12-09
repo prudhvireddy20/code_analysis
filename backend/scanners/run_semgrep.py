@@ -3,6 +3,7 @@ import json
 import subprocess
 import traceback
 
+
 def run_semgrep_scan(source_path, backend_dir=None):
     results = {}
     try:
@@ -20,13 +21,18 @@ def run_semgrep_scan(source_path, backend_dir=None):
         print(f"\n[INFO] Semgrep scan output path: {output_file}")
 
         # Run semgrep scan with built-in security rules
-        subprocess.run([
-            "semgrep",
-            "--config", "auto",            # auto-detect languages
-            "--json",                      # output JSON
-            "--output", output_file,
-            source_path
-        ], check=True)
+        subprocess.run(
+            [
+                "semgrep",
+                "--config",
+                "auto",  # auto-detect languages
+                "--json",  # output JSON
+                "--output",
+                output_file,
+                source_path,
+            ],
+            check=True,
+        )
 
         if not os.path.exists(output_file):
             raise FileNotFoundError(f"Semgrep results not found at {output_file}")
@@ -39,6 +45,9 @@ def run_semgrep_scan(source_path, backend_dir=None):
         results["semgrep"] = {"error": "Semgrep scan failed", "details": str(e)}
     except Exception:
         print("semgrep faced an exception")
-        results["semgrep"] = {"error": "Exception in Semgrep", "details": traceback.format_exc()}
+        results["semgrep"] = {
+            "error": "Exception in Semgrep",
+            "details": traceback.format_exc(),
+        }
 
     return results

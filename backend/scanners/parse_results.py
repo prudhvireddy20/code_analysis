@@ -31,22 +31,27 @@ import traceback
 #         results.append({"tool": "CodeQL", "error": f"Parse error: {e}"})
 #     return results
 
+
 def parse_single_sarif(sarif):
     results = []
 
     if not sarif or "error" in sarif:
-        return [{
-            "tool": "CodeQL",
-            "error": sarif.get("error", "No results"),
-            "details": sarif.get("details", "")
-        }]
+        return [
+            {
+                "tool": "CodeQL",
+                "error": sarif.get("error", "No results"),
+                "details": sarif.get("details", ""),
+            }
+        ]
 
     # build rule → severity map
     rule_map = {}
     for run in sarif.get("runs", []):
         driver = run.get("tool", {}).get("driver", {})
         for rule in driver.get("rules", []):
-            rule_map[rule["id"]] = rule.get("defaultConfiguration", {}).get("level", "unknown")
+            rule_map[rule["id"]] = rule.get("defaultConfiguration", {}).get(
+                "level", "unknown"
+            )
 
     for run in sarif.get("runs", []):
         for result in run.get("results", []):
@@ -60,22 +65,22 @@ def parse_single_sarif(sarif):
 
             severity = rule_map.get(rule_id, "unknown")
 
-            results.append({
-                "tool": "CodeQL",
-                "rule": rule_id,
-                "message": message,
-                "severity": severity,
-                "file": f"{file_path}:{line}" if line else file_path
-            })
+            results.append(
+                {
+                    "tool": "CodeQL",
+                    "rule": rule_id,
+                    "message": message,
+                    "severity": severity,
+                    "file": f"{file_path}:{line}" if line else file_path,
+                }
+            )
 
     if not results:
-        results.append({
-            "tool": "CodeQL",
-            "message": "No vulnerabilities found in this SARIF."
-        })
+        results.append(
+            {"tool": "CodeQL", "message": "No vulnerabilities found in this SARIF."}
+        )
 
     return results
-
 
 
 def parse_all_codeql(all_results):
@@ -84,12 +89,14 @@ def parse_all_codeql(all_results):
     for lang, sarif in all_results.items():
         # handle failures
         if sarif.get("status") == "skipped" or "error" in sarif:
-            final_results.append({
-                "tool": "CodeQL",
-                "language": lang,
-                "error": sarif.get("error", sarif.get("reason", "Scan skipped")),
-                "details": sarif.get("details", "")
-            })
+            final_results.append(
+                {
+                    "tool": "CodeQL",
+                    "language": lang,
+                    "error": sarif.get("error", sarif.get("reason", "Scan skipped")),
+                    "details": sarif.get("details", ""),
+                }
+            )
             continue
 
         parsed = parse_single_sarif(sarif)
@@ -99,8 +106,9 @@ def parse_all_codeql(all_results):
 
     return final_results
 
+
 def parse_syft(sbom_result):
- 
+
     results = []
     try:
 
@@ -111,18 +119,19 @@ def parse_syft(sbom_result):
             purl = component.get("purl", "")
             type_ = component.get("type", "")
 
-            results.append({
-                "tool": "Syft",
-                "name": name,
-                "version": version,
-                "type": type_,
-                "purl": purl
-            })
+            results.append(
+                {
+                    "tool": "Syft",
+                    "name": name,
+                    "version": version,
+                    "type": type_,
+                    "purl": purl,
+                }
+            )
     except Exception as e:
         results.append({"tool": "Syft", "error": f"Parse error: {e}"})
 
     return results
-
 
 
 # backend/scanners/parse_results.py
@@ -131,15 +140,23 @@ def parse_osv(osv_result):
     try:
         # Handle error cases first
         if isinstance(osv_result, dict) and "error" in osv_result:
-            return [{
-                "tool": "OSV-Scanner", 
-                "error": osv_result.get("error", "Unknown error"),
-                "details": osv_result.get("details", "")
-            }]
-        
+            return [
+                {
+                    "tool": "OSV-Scanner",
+                    "error": osv_result.get("error", "Unknown error"),
+                    "details": osv_result.get("details", ""),
+                }
+            ]
+
         # Check if we have the main 'results' key
         if not isinstance(osv_result, dict) or "results" not in osv_result:
-            return [{"tool": "OSV-Scanner", "error": "Invalid OSV result format", "received_data": str(type(osv_result))}]
+            return [
+                {
+                    "tool": "OSV-Scanner",
+                    "error": "Invalid OSV result format",
+                    "received_data": str(type(osv_result)),
+                }
+            ]
 
         for result in osv_result.get("results", []):
             for pkg in result.get("packages", []):
@@ -149,14 +166,16 @@ def parse_osv(osv_result):
                 pkg_ecosystem = package_info.get("ecosystem", "Unknown")
 
                 vulnerabilities = pkg.get("vulnerabilities", [])
-                
+
                 if vulnerabilities:
                     for vuln in vulnerabilities:
                         vuln_id = vuln.get("id", "N/A")
                         aliases = vuln.get("aliases", [])
-                        cve_ids = [alias for alias in aliases if alias.startswith("CVE-")]
+                        cve_ids = [
+                            alias for alias in aliases if alias.startswith("CVE-")
+                        ]
                         display_id = cve_ids[0] if cve_ids else vuln_id
-                        
+
                         severity_val = "UNKNOWN"
                         db_specific = vuln.get("database_specific", {})
                         if "severity" in db_specific:
@@ -169,46 +188,56 @@ def parse_osv(osv_result):
                                 elif severity_item.get("score"):
                                     severity_val = severity_item.get("score")
                                     break
-                        
+
                         summary = vuln.get("summary", "")
                         details = vuln.get("details", summary)
 
-                        results.append({
+                        results.append(
+                            {
+                                "tool": "OSV-Scanner",
+                                "package": pkg_name,
+                                "version": pkg_version,
+                                "ecosystem": pkg_ecosystem,
+                                "id": display_id,
+                                "severity": severity_val,
+                                "summary": summary,
+                                "details": details,
+                            }
+                        )
+                else:
+                    results.append(
+                        {
                             "tool": "OSV-Scanner",
                             "package": pkg_name,
                             "version": pkg_version,
                             "ecosystem": pkg_ecosystem,
-                            "id": display_id,
-                            "severity": severity_val,
-                            "summary": summary,
-                            "details": details
-                        })
-                else:
-                    results.append({
-                        "tool": "OSV-Scanner",
-                        "package": pkg_name,
-                        "version": pkg_version,
-                        "ecosystem": pkg_ecosystem,
-                        "status": "No vulnerabilities found"
-                    })
+                            "status": "No vulnerabilities found",
+                        }
+                    )
 
         if not results:
-            results.append({
-                "tool": "OSV-Scanner",
-                "status": "No vulnerabilities found",
-                "summary": "Scan completed successfully but no vulnerabilities detected."
-            })
+            results.append(
+                {
+                    "tool": "OSV-Scanner",
+                    "status": "No vulnerabilities found",
+                    "summary": "Scan completed successfully but no vulnerabilities detected.",
+                }
+            )
 
     except Exception as e:
-        results.append({"tool": "OSV-Scanner", "error": f"Parse error: {str(e)}", "traceback": traceback.format_exc()})
-    
+        results.append(
+            {
+                "tool": "OSV-Scanner",
+                "error": f"Parse error: {str(e)}",
+                "traceback": traceback.format_exc(),
+            }
+        )
+
     return results
 
 
-
-
 def parse_gitleaks(gitleaks_result):
- 
+
     results = []
     try:
         if not gitleaks_result:
@@ -216,35 +245,40 @@ def parse_gitleaks(gitleaks_result):
 
         if isinstance(gitleaks_result, dict):
             if "error" in gitleaks_result:
-                return [{
-                    "tool": "Gitleaks",
-                    "error": gitleaks_result.get("error"),
-                    "details": gitleaks_result.get("details", "")
-                }]
+                return [
+                    {
+                        "tool": "Gitleaks",
+                        "error": gitleaks_result.get("error"),
+                        "details": gitleaks_result.get("details", ""),
+                    }
+                ]
             if "message" in gitleaks_result:
                 return [{"tool": "Gitleaks", "message": gitleaks_result["message"]}]
 
         if isinstance(gitleaks_result, list):
             for leak in gitleaks_result:
-                results.append({
-                    "tool": "Gitleaks",
-                    "rule": leak.get("RuleID", ""),
-                    "file": leak.get("File", ""),
-                    "secret": leak.get("Secret", "[REDACTED]"),
-                    "line": leak.get("StartLine", "")
-                })
+                results.append(
+                    {
+                        "tool": "Gitleaks",
+                        "rule": leak.get("RuleID", ""),
+                        "file": leak.get("File", ""),
+                        "secret": leak.get("Secret", "[REDACTED]"),
+                        "line": leak.get("StartLine", ""),
+                    }
+                )
 
     except Exception as e:
         results.append({"tool": "Gitleaks", "error": f"Parse error: {e}"})
 
     return results
 
+
 def parse_noir(noir_result):
-    
+
     """
     Parse OWASP Noir JSON output into a standardized list of dictionaries.
     """
-    print(noir_result,"\n")
+    print(noir_result, "\n")
     results = []
     try:
         if not noir_result:
@@ -254,11 +288,13 @@ def parse_noir(noir_result):
         if isinstance(noir_result, dict):
             if "error" in noir_result:
                 print("There is error in noir result\n")
-                return [{
-                    "tool": "Noir",
-                    "error": noir_result.get("error"),
-                    "details": noir_result.get("details", "")
-                }]
+                return [
+                    {
+                        "tool": "Noir",
+                        "error": noir_result.get("error"),
+                        "details": noir_result.get("details", ""),
+                    }
+                ]
             # Handle message-only responses
             if "message" in noir_result:
                 print("There is no message form noir\n")
@@ -268,17 +304,19 @@ def parse_noir(noir_result):
         if isinstance(noir_result, list):
             for finding in noir_result:
                 # Each finding may contain keys like: 'file', 'line', 'severity', 'description', 'rule'
-                results.append({
-                    "tool": "Noir",
-                    "rule": finding.get("rule", ""),
-                    "file": finding.get("file", ""),
-                    "line": finding.get("line", ""),
-                    "severity": finding.get("severity", ""),
-                    "description": finding.get("description", "")
-                })
+                results.append(
+                    {
+                        "tool": "Noir",
+                        "rule": finding.get("rule", ""),
+                        "file": finding.get("file", ""),
+                        "line": finding.get("line", ""),
+                        "severity": finding.get("severity", ""),
+                        "description": finding.get("description", ""),
+                    }
+                )
 
     except Exception as e:
-    
+
         results.append({"tool": "Noir", "error": f"Parse error: {e}"})
 
     return results
@@ -318,11 +356,12 @@ def parse_noir(noir_result):
 
 import json
 
+
 def parse_semgrep(semgrep_result):
     results = []
 
-    #print("\n--- RAW SEMGREP RESULT ---")
-    #print(json.dumps(semgrep_result, indent=2))
+    # print("\n--- RAW SEMGREP RESULT ---")
+    # print(json.dumps(semgrep_result, indent=2))
 
     try:
         # Semgrep result is nested under semgrep: {...}
@@ -336,23 +375,27 @@ def parse_semgrep(semgrep_result):
         print(f"Semgrep results count: {len(raw_results)}")
 
         for item in raw_results:
-            results.append({
-                "path": item.get("path", ""),
-                "check_id": item.get("check_id", "N/A"),
-                "extra": {"message": item.get("extra", {}).get("message", "")},
-                "start": {"line": item.get("start", {}).get("line", None)},
-            })
+            results.append(
+                {
+                    "path": item.get("path", ""),
+                    "check_id": item.get("check_id", "N/A"),
+                    "extra": {"message": item.get("extra", {}).get("message", "")},
+                    "start": {"line": item.get("start", {}).get("line", None)},
+                }
+            )
 
     except Exception as e:
         print("Error parsing semgrep:", e)
-        results.append({
-            "path": "",
-            "check_id": "parse_error",
-            "extra": {"message": str(e)},
-            "start": {"line": None},
-        })
+        results.append(
+            {
+                "path": "",
+                "check_id": "parse_error",
+                "extra": {"message": str(e)},
+                "start": {"line": None},
+            }
+        )
 
-    #print("\n--- PARSED SEMGREP RESULT ---")
-    #print(json.dumps(results, indent=2))
+    # print("\n--- PARSED SEMGREP RESULT ---")
+    # print(json.dumps(results, indent=2))
 
     return results
